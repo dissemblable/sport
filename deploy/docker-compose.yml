@@ -1,0 +1,74 @@
+# Déploiement derrière le SSO valldoy.com (cloudflared → nginx → Authelia).
+# Procédure complète : deploy/README.md
+#
+#   cd deploy && docker compose up -d --build
+#
+# Aucune section `ports:`. Seul sport-web rejoint le réseau `web` du stack, par
+# lequel le nginx SSO l'atteint ; l'API et la base restent sur un réseau
+# interne, hors de portée des autres conteneurs.
+
+name: sport
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: '3'
+
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: sport-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: sport
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?à définir dans deploy/.env}
+      POSTGRES_DB: sport
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks: [internal]
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U sport -d sport']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    logging: *logging
+
+  api:
+    build:
+      context: ..
+      target: api
+    image: sport-api
+    container_name: sport-api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://sport:${POSTGRES_PASSWORD}@sport-db:5432/sport
+      AUTH_MODE: forward-auth
+      AUTH_LOGOUT_URL: ${AUTH_LOGOUT_URL:-https://auth.valldoy.com/logout}
+    networks: [internal]
+    logging: *logging
+
+  web:
+    build:
+      context: ..
+      target: web
+    image: sport-web
+    container_name: sport-web
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    networks: [web, internal]
+    logging: *logging
+
+networks:
+  web:
+    external: true
+  internal:
+    internal: true
+
+volumes:
+  pgdata:

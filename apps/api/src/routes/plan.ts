@@ -197,12 +197,19 @@ export const planRoutes = new Hono<AppEnv>()
   /** Muscles ciblés par une séance planifiée — vue compacte pour le planning. */
   .get('/plan/sessions/:id/muscles', async (c) => {
     const db = c.get('db');
+    const userId = c.get('userId');
     const id = c.req.param('id');
 
+    // La table de liaison ne porte pas l'utilisateur : on passe par la séance
+    // pour ne jamais exposer le planning d'un autre compte.
     const rows = await db
-      .select()
+      .select({
+        muscleCode: plannedSessionMuscles.muscleCode,
+        plannedSets: plannedSessionMuscles.plannedSets,
+      })
       .from(plannedSessionMuscles)
-      .where(eq(plannedSessionMuscles.plannedSessionId, id));
+      .innerJoin(plannedSessions, eq(plannedSessions.id, plannedSessionMuscles.plannedSessionId))
+      .where(and(eq(plannedSessionMuscles.plannedSessionId, id), eq(plannedSessions.userId, userId)));
 
     if (rows.length === 0) throw notFound('Séance introuvable ou sans muscle ciblé.');
 

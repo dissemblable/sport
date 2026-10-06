@@ -1,15 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { fileURLToPath } from 'node:url';
-import { sql } from 'drizzle-orm';
-import {
-  clearUserData,
-  createDatabase,
-  getSingleUserId,
-  seedReference,
-  seedUser,
-  type Database,
-} from '@sport/db';
+import { eq, sql } from 'drizzle-orm';
+import { createDatabase, seedReference, seedUser, users, type Database } from '@sport/db';
 import { DEFAULT_MIN_REST_HOURS } from '@sport/shared';
 import { createApp } from './app';
 import { resetUserCache } from './context';
@@ -72,10 +65,10 @@ beforeAll(async () => {
 
   await seedReference(db);
 
-  // Chaque exécution repart d'un utilisateur vierge : les tests portent sur
-  // l'accumulation de fatigue, un reliquat fausserait tout.
-  const existing = await getSingleUserId(db);
-  if (existing) await clearUserData(db, existing);
+  // Chaque exécution repart d'une base sans utilisateur : les tests portent sur
+  // l'accumulation de fatigue, un reliquat fausserait tout. Les comptes SSO
+  // créés par une exécution précédente partent avec.
+  await db.delete(users);
   resetUserCache();
 
   userId = await seedUser(db, {
@@ -85,7 +78,7 @@ beforeAll(async () => {
     experienceLevel: 'intermediate',
   });
 
-  app = createApp(db);
+  app = createApp(db, { auth: { mode: 'local', logoutUrl: null } });
 }, 60_000);
 
 afterAll(async () => {
@@ -466,5 +459,117 @@ describe('déplacement de séance', () => {
       expect(moved.status).toBe(200);
       expect(moved.body.moved).toBe(true);
     }
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Derrière le SSO, nginx transmet le compte validé par Authelia dans les
+ * en-têtes `Remote-*`. Ces tests jouent le rôle de nginx.
+ */
+describe('authentification SSO', () => {
+  const LOGOUT_URL = 'https://auth.valldoy.com/logout';
+  let ssoApp: ReturnType<typeof createApp>;
+
+  beforeAll(() => {
+    ssoApp = createApp(db, { auth: { mode: 'forward-auth', logoutUrl: LOGOUT_URL } });
+  });
+
+  async function ssoCall(
+    method: string,
+    path: string,
+    headers: Record<string, string>,
+    body?: unknown,
+  ) {
+    const response = await ssoApp.request(path, {
+      method,
+      headers: { 'Content-Type': 'application/json', ...headers },
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+    });
+    const text = await response.text();
+    return { status: response.status, body: text ? JSON.parse(text) : null };
+  }
+
+  it('laisse la sonde de santé accessible sans compte', async () => {
+    const { status } = await ssoCall('GET', '/api/health', {});
+    expect(status).toBe(200);
+  });
+
+  it('refuse une requête sans en-tête Remote-User', async () => {
+    const { status, body } = await ssoCall('GET', '/api/profile', {});
+    expect(status).toBe(401);
+    expect(body.error.code).toBe('unauthenticated');
+  });
+
+  it('crée le profil d’un compte à sa première visite, accents compris', async () => {
+    // Authelia envoie le nom en UTF-8, Node le lit en Latin-1 : on reproduit
+    // exactement ce qui arrive en production.
+    const asReceivedByNode = Buffer.from('Jérôme Dupont', 'utf8').toString('latin1');
+
+    const { status, body } = await ssoCall('GET', '/api/profile', {
+      'Remote-User': 'alice',
+      'Remote-Name': asReceivedByNode,
+    });
+
+    expect(status).toBe(200);
+    expect(body.displayName).toBe('Jérôme Dupont');
+    expect(body.equipment.owned).toContain('dumbbells');
+    expect(body.muscleSettings).toHaveLength(17);
+  });
+
+  it('expose le compte connecté et l’adresse de déconnexion', async () => {
+    const { status, body } = await ssoCall('GET', '/api/me', {
+      'Remote-User': 'alice',
+      'Remote-Name': 'Alice',
+      'Remote-Email': 'alice@valldoy.com',
+      'Remote-Groups': 'admins, users',
+    });
+
+    expect(status).toBe(200);
+    expect(body).toEqual({
+      authMode: 'forward-auth',
+      username: 'alice',
+      displayName: 'Alice',
+      email: 'alice@valldoy.com',
+      groups: ['admins', 'users'],
+      logoutUrl: LOGOUT_URL,
+    });
+  });
+
+  it('ne crée qu’un profil quand les premières requêtes arrivent en parallèle', async () => {
+    const responses = await Promise.all(
+      Array.from({ length: 6 }, () => ssoCall('GET', '/api/profile', { 'Remote-User': 'carole' })),
+    );
+
+    for (const response of responses) expect(response.status).toBe(200);
+    expect(new Set(responses.map((r) => r.body.userId)).size).toBe(1);
+
+    const rows = await db.select().from(users).where(eq(users.externalId, 'carole'));
+    expect(rows).toHaveLength(1);
+  });
+
+  it('isole les données de chaque compte', async () => {
+    const alice = { 'Remote-User': 'alice' };
+    const bob = { 'Remote-User': 'bob' };
+
+    const generated = await ssoCall('POST', '/api/plan/generate', alice, { durationWeeks: 4 });
+    expect(generated.status).toBe(201);
+
+    const plan = await ssoCall('GET', '/api/plan/current', alice);
+    const sessionId = plan.body.upcomingSessions[0].id;
+
+    expect((await ssoCall('GET', '/api/plan/current', bob)).body.plan).toBeNull();
+    expect((await ssoCall('GET', `/api/sessions/${sessionId}`, bob)).status).toBe(404);
+    expect((await ssoCall('GET', `/api/plan/sessions/${sessionId}/muscles`, bob)).status).toBe(
+      404,
+    );
+    expect(
+      (await ssoCall('POST', '/api/workouts/start', bob, { plannedSessionId: sessionId })).status,
+    ).toBe(404);
+
+    expect((await ssoCall('GET', `/api/plan/sessions/${sessionId}/muscles`, alice)).status).toBe(
+      200,
+    );
   });
 });

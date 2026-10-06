@@ -1,16 +1,17 @@
 import { MUSCLE_CATALOG } from '@sport/core';
 import { EQUIPMENT_LABELS, type BandDetails, type DumbbellDetails } from '@sport/shared';
-import { eq, sql } from 'drizzle-orm';
-import type { Database } from '../client';
+import { asc, eq, isNull, sql } from 'drizzle-orm';
+import type { Database, DatabaseExecutor } from '../client';
 import { equipment, muscles, userEquipment, userMuscleSettings, userProfiles, users } from '../schema/index';
 
 /**
- * Création du profil unique de l'application.
+ * Création des profils utilisateur.
  *
- * L'application fonctionne sans authentification : un seul utilisateur existe,
- * créé au premier amorçage. Toutes les tables portent néanmoins son
- * identifiant, ce qui permettra d'ajouter des comptes plus tard sans migration
- * de données.
+ * Deux portes d'entrée, mêmes réglages de départ :
+ *
+ * - `seedUser` amorce le profil local, utilisé sans authentification
+ *   (`pnpm db:seed`, tests, démo) ;
+ * - `provisionUser` crée le profil d'un compte SSO à sa première visite.
  */
 
 /** Matériel par défaut : un équipement de départ réaliste pour le domicile. */
@@ -39,11 +40,8 @@ export interface SeedUserOptions {
 }
 
 export async function seedUser(db: Database, options: SeedUserOptions = {}): Promise<string> {
-  const existing = await db.select({ id: users.id }).from(users).limit(1);
-  const existingId = existing[0]?.id;
-
   const userId =
-    existingId ??
+    (await getSingleUserId(db)) ??
     (
       await db
         .insert(users)
@@ -51,6 +49,55 @@ export async function seedUser(db: Database, options: SeedUserOptions = {}): Pro
         .returning({ id: users.id })
     )[0]!.id;
 
+  const equipmentCodes = await seedUserDefaults(db, userId, options);
+
+  console.log(
+    `Profil amorcé : ${options.displayName ?? 'Athlète'} — ` +
+      `${options.sessionsPerWeek ?? 4} séances/semaine, ` +
+      `matériel : ${equipmentCodes.map((code) => EQUIPMENT_LABELS[code]).join(', ')}, ` +
+      `${MUSCLE_CATALOG.length} réglages musculaires.`,
+  );
+
+  return userId;
+}
+
+/**
+ * Profil d'un compte SSO, créé à sa première visite.
+ *
+ * Au premier chargement, le navigateur lance plusieurs requêtes en parallèle :
+ * toutes arrivent ici pour un compte encore inconnu. La création se fait donc
+ * dans une transaction, avec une insertion en `ON CONFLICT DO NOTHING` sur
+ * `external_id` : PostgreSQL fait attendre les requêtes concurrentes jusqu'à la
+ * validation de la première, et elles ne trouvent ensuite qu'un profil complet.
+ */
+export async function provisionUser(
+  db: Database,
+  identity: { externalId: string; displayName: string },
+): Promise<string> {
+  return db.transaction(async (tx) => {
+    const [created] = await tx
+      .insert(users)
+      .values(identity)
+      .onConflictDoNothing({ target: users.externalId })
+      .returning({ id: users.id });
+
+    if (created) {
+      await seedUserDefaults(tx, created.id);
+      return created.id;
+    }
+
+    const [existing] = await tx
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.externalId, identity.externalId));
+
+    if (!existing) throw new Error(`Compte SSO introuvable après conflit : ${identity.externalId}.`);
+    return existing.id;
+  });
+}
+
+/** Profil, matériel et réglages musculaires de départ. Renvoie le matériel attribué. */
+async function seedUserDefaults(db: DatabaseExecutor, userId: string, options: SeedUserOptions = {}) {
   await db
     .insert(userProfiles)
     .values({
@@ -121,19 +168,20 @@ export async function seedUser(db: Database, options: SeedUserOptions = {}): Pro
     await db.insert(userMuscleSettings).values(settings).onConflictDoNothing();
   }
 
-  console.log(
-    `Profil amorcé : ${options.displayName ?? 'Athlète'} — ` +
-      `${options.sessionsPerWeek ?? 4} séances/semaine, ` +
-      `matériel : ${equipmentRows.map((r) => EQUIPMENT_LABELS[r.code]).join(', ')}, ` +
-      `${MUSCLE_CATALOG.length} réglages musculaires.`,
-  );
-
-  return userId;
+  return equipmentRows.map((row) => row.code);
 }
 
-/** Identifiant de l'utilisateur unique ; `null` si la base n'est pas amorcée. */
+/**
+ * Identifiant du profil local — celui qui n'est rattaché à aucun compte SSO ;
+ * `null` si la base n'est pas amorcée.
+ */
 export async function getSingleUserId(db: Database): Promise<string | null> {
-  const [row] = await db.select({ id: users.id }).from(users).limit(1);
+  const [row] = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(isNull(users.externalId))
+    .orderBy(asc(users.createdAt))
+    .limit(1);
   return row?.id ?? null;
 }
 

@@ -28,16 +28,21 @@ import {
 /**
  * Utilisateur et ses réglages.
  *
- * L'application fonctionne en mono-utilisateur local : aucune authentification,
- * un seul profil amorcé au démarrage. Le `user_id` est néanmoins présent sur
- * toutes les tables de données personnelles — l'ajouter après coup imposerait
- * une migration lourde sur des tables déjà volumineuses (journal de fatigue,
- * séries), alors qu'il ne coûte presque rien dès maintenant.
+ * Deux modes coexistent. En local, un seul profil amorcé par `pnpm db:seed`,
+ * sans authentification. Derrière le SSO, un profil par compte, créé à la
+ * première visite et rattaché par `external_id`. Le `user_id` présent sur
+ * toutes les tables de données personnelles rend ce passage possible sans
+ * migration des données.
  */
 
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
   displayName: text('display_name').notNull(),
+  /**
+   * Identifiant du compte SSO (en-tête `Remote-User` posé par Authelia).
+   * `null` pour le profil local, qui n'est rattaché à aucun compte.
+   */
+  externalId: text('external_id').unique(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 

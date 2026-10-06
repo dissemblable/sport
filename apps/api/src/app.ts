@@ -3,8 +3,9 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { createContextMiddleware, type AppEnv } from './context';
-import { env } from './env';
+import { env, type AuthOptions } from './env';
 import { handleError } from './errors';
+import { accountRoutes } from './routes/account';
 import { exerciseRoutes } from './routes/exercises';
 import { planRoutes } from './routes/plan';
 import { profileRoutes } from './routes/profile';
@@ -20,8 +21,12 @@ import { workoutRoutes } from './routes/workouts';
  * globale : les tests d'intégration peuvent ainsi lancer l'application sur une
  * base dédiée, et `app.request()` de Hono permet de tester les routes sans
  * jamais ouvrir de port.
+ *
+ * Le mode d'authentification vient de l'environnement ; les tests le fixent
+ * explicitement pour ne pas dépendre du `.env` du développeur.
  */
-export function createApp(db: Database) {
+export function createApp(db: Database, options: { auth?: AuthOptions } = {}) {
+  const auth = options.auth ?? env.auth;
   const app = new Hono<AppEnv>();
 
   app.onError(handleError);
@@ -37,13 +42,16 @@ export function createApp(db: Database) {
     }),
   );
 
-  app.use('/api/*', createContextMiddleware(db));
-
+  // Déclarée avant le middleware de contexte : la sonde de santé du conteneur
+  // interroge l'API directement, sans compte SSO.
   app.get('/api/health', (c) =>
     c.json({ status: 'ok', service: '@sport/api', time: new Date().toISOString() }),
   );
 
+  app.use('/api/*', createContextMiddleware(db, auth));
+
   const api = app.basePath('/api');
+  api.route('/', accountRoutes(auth));
   api.route('/', profileRoutes);
   api.route('/', exerciseRoutes);
   api.route('/', recoveryRoutes);

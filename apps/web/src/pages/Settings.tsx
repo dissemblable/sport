@@ -11,6 +11,7 @@ import {
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
+  useMe,
   useProfile,
   useUpdateEquipment,
   useUpdateMuscleSettings,
@@ -43,7 +44,42 @@ export function Settings() {
           Parcourir les {80} exercices du catalogue
         </Link>
       </Card>
+
+      <AccountSection />
     </>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Compte SSO et déconnexion.
+ *
+ * Masqué en local : sans SSO, il n'y a ni compte ni session à fermer.
+ */
+function AccountSection() {
+  const { data: me } = useMe();
+  if (me?.authMode !== 'forward-auth' || !me.username) return null;
+
+  // Après déconnexion, le portail renvoie sur l'application, que nginx
+  // redirige aussitôt vers l'écran de connexion.
+  const logoutHref = me.logoutUrl
+    ? `${me.logoutUrl}?rd=${encodeURIComponent(`${window.location.origin}/`)}`
+    : null;
+
+  return (
+    <Card title="Compte">
+      <p className="text-sm">{me.displayName ?? me.username}</p>
+      <p className="text-xs text-ink-400">
+        {me.username}
+        {me.email && ` · ${me.email}`}
+      </p>
+      {logoutHref && (
+        <a href={logoutHref} className="btn-ghost mt-4 w-full">
+          Se déconnecter
+        </a>
+      )}
+    </Card>
   );
 }
 

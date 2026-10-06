@@ -22,6 +22,11 @@ import type {
  * Les erreurs de l'API suivent toutes la même forme ; elles sont converties en
  * `ApiClientError` pour que l'interface puisse afficher le message français
  * renvoyé par le serveur plutôt qu'un « Failed to fetch » générique.
+ *
+ * Derrière le SSO, une session expirée se traduit par une redirection de nginx
+ * vers le portail de connexion. Suivie par `fetch`, elle échouerait (autre
+ * origine, réponse HTML) : elle est interceptée, et la page rechargée passe
+ * alors par le portail avant de revenir ici.
  */
 
 export class ApiClientError extends Error {
@@ -41,11 +46,21 @@ export class ApiClientError extends Error {
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`/api${path}`, {
     ...init,
+    redirect: 'manual',
     headers: {
       'Content-Type': 'application/json',
       ...init?.headers,
     },
   });
+
+  if (response.type === 'opaqueredirect') {
+    reloadForLogin();
+    throw new ApiClientError(
+      401,
+      'session_expired',
+      'Session expirée : redirection vers la page de connexion…',
+    );
+  }
 
   const text = await response.text();
   const payload = text ? JSON.parse(text) : null;
@@ -61,6 +76,24 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   }
 
   return payload as T;
+}
+
+/**
+ * Recharge la page pour repasser par le portail de connexion.
+ *
+ * Plusieurs requêtes échouent en même temps à l'expiration de la session, et
+ * une redirection persistante (configuration nginx erronée, cookie refusé)
+ * provoquerait une boucle : un seul rechargement par fenêtre de 30 secondes.
+ */
+function reloadForLogin() {
+  const key = 'sso-reload-at';
+  try {
+    if (Date.now() - Number(sessionStorage.getItem(key) ?? 0) < 30_000) return;
+    sessionStorage.setItem(key, String(Date.now()));
+  } catch {
+    // Stockage indisponible (navigation privée stricte) : on recharge quand même.
+  }
+  window.location.reload();
 }
 
 export const api = {
@@ -299,6 +332,15 @@ export interface ActiveWorkoutDto {
     durationSeconds: number | null;
     performedAt: string;
   }[];
+}
+
+export interface MeDto {
+  authMode: 'local' | 'forward-auth';
+  username: string | null;
+  displayName: string | null;
+  email: string | null;
+  groups: string[];
+  logoutUrl: string | null;
 }
 
 export interface ProfileDto {

@@ -36,6 +36,17 @@ Ouvrez <http://localhost:5173>.
 
 Prérequis : Node ≥ 20.11, pnpm 10, Docker.
 
+## Déploiement
+
+En production, l'application tourne derrière le SSO de valldoy.com (Cloudflare Tunnel →
+nginx → Authelia) : trois conteneurs sans port publié, un profil par compte SSO créé à la
+première visite. Procédure complète dans [deploy/README.md](deploy/README.md).
+
+```bash
+cd deploy && cp .env.example .env    # puis renseigner POSTGRES_PASSWORD
+docker compose up -d --build
+```
+
 ---
 
 ## Architecture
@@ -262,6 +273,7 @@ exclusions pour blessure), `recovery_checkins` et `muscle_soreness_reports`.
 
 ```
 GET    /api/health
+GET    /api/me                         compte SSO connecté, adresse de déconnexion
 GET    /api/profile                    PATCH /api/profile
 GET    /api/equipment                  PUT   /api/profile/equipment
 PUT    /api/profile/muscles            PUT   /api/profile/exercise-preference
@@ -370,7 +382,7 @@ Les tests qui comptent vraiment :
 | Base | PostgreSQL 17 + Drizzle | Types natifs, JSONB pour les comptes rendus, migrations SQL versionnées |
 | Backend | Hono | Léger, `app.request()` teste les routes sans ouvrir de port |
 | Frontend | Vite 6 + React 19 + Tailwind 4 | Démarrage instantané, thème par tokens CSS |
-| Comptes | Mono-utilisateur, sans auth | `user_id` présent partout : ajouter l'auth ne demandera pas de migration |
+| Comptes | SSO par en-tête de confiance (`Remote-User`), profil local unique en développement | Aucun mot de passe géré par l'application ; `user_id` présent partout, un profil par compte |
 | Imports | Sans extension `.js` | `drizzle-kit` charge le schéma via esbuild en CJS et ne résout pas les extensions TypeScript |
 
 Les paquets internes exposent directement leurs sources TypeScript : `tsx` et Vite les
@@ -380,7 +392,9 @@ transpilent, ce qui supprime toute étape de build intermédiaire en développem
 
 ## Limites connues
 
-- **Mono-utilisateur.** Choix assumé ; le schéma est prêt pour l'ajout de comptes.
+- **Authentification déléguée au SSO.** En mode `forward-auth`, l'API croit l'en-tête
+  `Remote-User` sur parole : elle ne doit être joignable qu'à travers le nginx qui valide la
+  session auprès d'Authelia, jamais exposée directement.
 - **Le catalogue est servi depuis le code**, pas depuis la base. Les tables `exercises` et
   `exercise_muscles` assurent l'intégrité référentielle et les agrégats SQL, mais ajouter un
   exercice personnalisé demanderait de lire le catalogue depuis PostgreSQL.

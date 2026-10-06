@@ -14,5 +14,5 @@ export {
   muscleIdMap,
   equipmentIdByCode,
 } from './seed/reference';
-export { seedUser, getSingleUserId, clearUserData } from './seed/user';
+export { seedUser, provisionUser, getSingleUserId, clearUserData } from './seed/user';
 export type { SeedUserOptions } from './seed/user';

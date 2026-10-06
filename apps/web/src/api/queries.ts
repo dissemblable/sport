@@ -6,6 +6,7 @@ import {
   type CurrentPlanDto,
   type ExerciseListItemDto,
   type FrequencyImpactDto,
+  type MeDto,
   type PreviewSessionDto,
   type ProfileDto,
   type RecoveryStateDto,
@@ -25,6 +26,7 @@ import {
  */
 
 export const queryKeys = {
+  me: ['me'] as const,
   profile: ['profile'] as const,
   recovery: ['recovery'] as const,
   systemic: ['recovery', 'systemic'] as const,
@@ -55,6 +57,15 @@ function useInvalidateRecovery() {
 /* -------------------------------------------------------------------------- */
 /*                                  Lectures                                  */
 /* -------------------------------------------------------------------------- */
+
+/** Compte SSO de la session — constant pendant toute la visite. */
+export function useMe() {
+  return useQuery({
+    queryKey: queryKeys.me,
+    queryFn: () => api.get<MeDto>('/me'),
+    staleTime: Infinity,
+  });
+}
 
 export function useProfile() {
   return useQuery({ queryKey: queryKeys.profile, queryFn: () => api.get<ProfileDto>('/profile') });

@@ -1,6 +1,11 @@
 import { fileURLToPath } from 'node:url';
 import { config } from 'dotenv';
-import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
+import {
+  drizzle,
+  type NodePgDatabase,
+  type NodePgQueryResultHKT,
+} from 'drizzle-orm/node-postgres';
+import type { PgDatabase } from 'drizzle-orm/pg-core';
 import pg from 'pg';
 import * as schema from './schema/index';
 
@@ -16,6 +21,9 @@ import * as schema from './schema/index';
 config({ path: fileURLToPath(new URL('../../../.env', import.meta.url)) });
 
 export type Database = NodePgDatabase<typeof schema>;
+
+/** La base ou une transaction ouverte : pour les écritures qui doivent pouvoir s'exécuter dans l'une comme dans l'autre. */
+export type DatabaseExecutor = PgDatabase<NodePgQueryResultHKT, typeof schema>;
 
 let pool: pg.Pool | null = null;
 let database: Database | null = null;

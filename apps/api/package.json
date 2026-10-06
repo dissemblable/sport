@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "start": "tsx src/index.ts",
-    "build": "tsup src/index.ts --format esm --target node20 --clean",
+    "build": "tsup",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "rebuild-fatigue": "tsx src/scripts/rebuild-fatigue.ts",

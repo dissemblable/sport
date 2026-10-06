@@ -1,0 +1,18 @@
+**/node_modules
+**/dist
+**/coverage
+**/*.tsbuildinfo
+**/*.log
+
+.git
+.vscode
+.idea
+
+# Secrets : jamais dans le contexte de build
+.env
+.env.*
+!.env.example
+deploy/.env
+
+# Documentation, inutile à la construction
+*.md
