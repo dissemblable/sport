@@ -1,0 +1,34 @@
+{
+  "name": "@sport/db",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Schéma PostgreSQL (Drizzle), migrations et amorçage du référentiel",
+  "exports": {
+    ".": "./src/index.ts",
+    "./schema": "./src/schema/index.ts"
+  },
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "generate": "drizzle-kit generate",
+    "migrate": "tsx src/scripts/migrate.ts",
+    "seed": "tsx src/scripts/seed.ts",
+    "reset": "tsx src/scripts/reset.ts",
+    "studio": "drizzle-kit studio",
+    "test": "echo \"@sport/db : couvert par les tests d'intégration de l'API\" && exit 0"
+  },
+  "dependencies": {
+    "@sport/core": "workspace:*",
+    "@sport/shared": "workspace:*",
+    "dotenv": "^16.4.7",
+    "drizzle-orm": "^0.38.3",
+    "pg": "^8.13.1"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.11.10",
+    "drizzle-kit": "^0.30.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  }
+}

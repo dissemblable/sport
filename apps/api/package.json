@@ -1,0 +1,35 @@
+{
+  "name": "@sport/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "API REST Hono : orchestration entre la base et le moteur de coaching",
+  "main": "./src/index.ts",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "build": "tsup src/index.ts --format esm --target node20 --clean",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "rebuild-fatigue": "tsx src/scripts/rebuild-fatigue.ts",
+    "seed:demo": "tsx src/scripts/seed-demo.ts"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.13.7",
+    "@hono/zod-validator": "^0.4.2",
+    "@sport/core": "workspace:*",
+    "@sport/db": "workspace:*",
+    "@sport/shared": "workspace:*",
+    "dotenv": "^16.4.7",
+    "drizzle-orm": "^0.38.3",
+    "hono": "^4.6.16",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "tsup": "^8.3.5",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "vitest": "^2.1.8"
+  }
+}

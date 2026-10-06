@@ -1,0 +1,44 @@
+{
+  "name": "application-sport",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Coach sportif intelligent pour l'entraînement à domicile — planification adaptative et gestion de la récupération musculaire",
+  "engines": {
+    "node": ">=20.11.0"
+  },
+  "packageManager": "pnpm@10.33.0",
+  "scripts": {
+    "dev": "pnpm --parallel --filter @sport/api --filter @sport/web dev",
+    "dev:api": "pnpm --filter @sport/api dev",
+    "dev:web": "pnpm --filter @sport/web dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "test:core": "pnpm --filter @sport/core test",
+    "lint": "eslint .",
+    "format": "prettier --write \"**/*.{ts,tsx,json,md,css}\"",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "db:generate": "pnpm --filter @sport/db generate",
+    "db:migrate": "pnpm --filter @sport/db migrate",
+    "db:seed": "pnpm --filter @sport/db seed",
+    "db:seed:demo": "pnpm --filter @sport/api seed:demo",
+    "db:reset": "pnpm --filter @sport/db reset",
+    "db:studio": "pnpm --filter @sport/db studio",
+    "db:rebuild-fatigue": "pnpm --filter @sport/api rebuild-fatigue"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild"]
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "@types/node": "^22.10.5",
+    "eslint": "^9.17.0",
+    "prettier": "^3.4.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.19.1",
+    "vitest": "^2.1.8"
+  }
+}

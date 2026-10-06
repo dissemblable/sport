@@ -1,0 +1,73 @@
+@import 'tailwindcss';
+
+/**
+ * Thème de l'application.
+ *
+ * Palette sombre par défaut : l'usage réel est un téléphone posé au sol dans
+ * un salon, souvent le soir. Un fond clair éblouit entre deux séries.
+ */
+@theme {
+  --color-ink-950: #0b1120;
+  --color-ink-900: #0f172a;
+  --color-ink-800: #1e293b;
+  --color-ink-700: #334155;
+  --color-ink-600: #475569;
+  --color-ink-400: #94a3b8;
+  --color-ink-300: #cbd5e1;
+  --color-ink-100: #f1f5f9;
+
+  --color-brand-400: #38bdf8;
+  --color-brand-500: #0ea5e9;
+  --color-brand-600: #0284c7;
+
+  /* Statuts de récupération — mêmes valeurs que FATIGUE_STATUS_COLORS. */
+  --color-fresh: #22c55e;
+  --color-ready: #84cc16;
+  --color-recovering: #eab308;
+  --color-fatigued: #f97316;
+  --color-overreached: #ef4444;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-ink-950);
+  color: var(--color-ink-100);
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  /* Encoche et barre de gestes sur mobile. */
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Cible tactile confortable : on manipule l'application les mains moites,
+   entre deux séries, sans regarder précisément. */
+button,
+a {
+  touch-action: manipulation;
+}
+
+@utility card {
+  @apply rounded-2xl border border-ink-800 bg-ink-900 p-4;
+}
+
+@utility btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40;
+}
+
+@utility btn-primary {
+  @apply btn bg-brand-500 text-ink-950 hover:bg-brand-400;
+}
+
+@utility btn-ghost {
+  @apply btn border border-ink-700 bg-transparent text-ink-100 hover:bg-ink-800;
+}

@@ -1,0 +1,25 @@
+{
+  "name": "@sport/core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Moteur métier pur : fatigue musculaire, planification adaptative, génération de séance et progression. Aucune I/O.",
+  "exports": {
+    ".": "./src/index.ts",
+    "./catalog": "./src/catalog/index.ts"
+  },
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@sport/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "vitest": "^2.1.8"
+  }
+}

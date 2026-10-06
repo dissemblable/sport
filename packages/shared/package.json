@@ -1,0 +1,21 @@
+{
+  "name": "@sport/shared",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Contrat partagé API <-> Web : énumérations, types du domaine et schémas zod",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "echo \"@sport/shared : pas de test (types uniquement)\" && exit 0"
+  },
+  "dependencies": {
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  }
+}
