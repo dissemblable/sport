@@ -1,5 +1,5 @@
 import { FATIGUE_STATUS_COLORS, type FatigueStatus } from '@sport/shared';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 
 /** Petits composants partagés — volontairement sans dépendance externe. */
 
@@ -144,6 +144,35 @@ export function Notice({
 
   return (
     <div className={`rounded-xl border px-3 py-2 text-sm ${tones[tone]}`}>{children}</div>
+  );
+}
+
+/**
+ * Photos « départ » et « arrivée » d'un exercice, servies depuis
+ * `public/exercises/<slug>-0.webp` et `-1.webp`. Rien n'est affiché si
+ * l'exercice n'a pas encore de photo.
+ */
+export function ExerciseImages({ slug, name }: { slug: string | null; name: string }) {
+  // Mémorise le slug en échec plutôt qu'un booléen : le composant n'est pas
+  // remonté quand on passe à l'exercice suivant.
+  const [missing, setMissing] = useState<string | null>(null);
+  if (!slug || missing === slug) return null;
+
+  return (
+    <div className="mb-3 grid grid-cols-2 items-start gap-2">
+      {['Départ', 'Arrivée'].map((label, index) => (
+        <figure key={label}>
+          <img
+            src={`/exercises/${slug}-${index}.webp`}
+            alt={`${name} — position ${label === 'Départ' ? 'de départ' : 'd’arrivée'}`}
+            loading="lazy"
+            onError={() => setMissing(slug)}
+            className="w-full rounded-lg bg-ink-800"
+          />
+          <figcaption className="mt-1 text-center text-xs text-ink-400">{label}</figcaption>
+        </figure>
+      ))}
+    </div>
   );
 }
 

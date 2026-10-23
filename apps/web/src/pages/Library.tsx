@@ -9,7 +9,7 @@ import {
 import { useState } from 'react';
 import { useExercises } from '../api/queries';
 import type { ExerciseListItemDto } from '../api/client';
-import { Card, ErrorMessage, Loading } from '../components/ui';
+import { Card, ErrorMessage, ExerciseImages, Loading } from '../components/ui';
 
 /**
  * Bibliothèque d'exercices.
@@ -123,6 +123,8 @@ export function Library() {
 function ExerciseDetail({ exercise }: { exercise: ExerciseListItemDto }) {
   return (
     <div className="mb-3 rounded-xl border border-ink-800 bg-ink-950 p-3">
+      <ExerciseImages slug={exercise.slug} name={exercise.name} />
+
       {exercise.setupNotes && (
         <p className="mb-3 text-xs text-ink-400">
           <span className="text-ink-300">Installation : </span>

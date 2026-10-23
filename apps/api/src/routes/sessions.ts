@@ -354,6 +354,7 @@ export const sessionRoutes = new Hono<AppEnv>()
         progressionNote: prescribed.progressionNote,
         rationale: prescribed.rationale,
         executionCues: prescribed.exercise.executionCues,
+        setupNotes: prescribed.exercise.setupNotes,
       })),
       report: serializeReport(generated),
       excludedExplanations: generated.report.excludedMuscles.map((entry) => {

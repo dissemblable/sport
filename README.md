@@ -326,11 +326,16 @@ soir.
 |---|---|
 | **Accueil** | Séance du jour, jauge de fatigue générale, muscles bientôt disponibles |
 | **Récup** ⭐ | Silhouette colorée par statut ; au clic, score, dernière sollicitation, heure de retour, volume 7 j. Point de forme quotidien |
-| **Séance** | Un exercice à la fois, gros boutons, chronomètre de repos, badge de progression |
+| **Séance** | Un exercice à la fois, photos départ / arrivée du mouvement, gros boutons, chronomètre de repos, badge de progression |
 | **Planning** | Sélecteur de fréquence 2–6 **avec aperçu de l'impact avant validation** |
 | **Stats** | Volume par muscle contre MEV / MAV / MRV |
 | **Exercices** | Catalogue filtrable, avec la répartition musculaire pondérée |
 | **Réglages** | Matériel possédé, priorités musculaires, exclusions |
+
+Les photos d'exercices (`apps/web/public/exercises/<slug>-0.webp` pour le départ, `-1.webp`
+pour l'arrivée) proviennent de [free-exercise-db](https://github.com/yuhonas/free-exercise-db)
+(domaine public, Unlicense). Un exercice sans photo affiche simplement ses consignes : pour en
+ajouter une, déposer les deux fichiers nommés d'après son slug.
 
 ---
 

@@ -16,6 +16,7 @@ import {
   Card,
   EmptyState,
   ErrorMessage,
+  ExerciseImages,
   Loading,
   Notice,
   formatHours,
@@ -355,6 +356,15 @@ function ExercisePanel({
         <div className="mb-3">
           <Notice tone="info">{progressionNote}</Notice>
         </div>
+      )}
+
+      <ExerciseImages slug={exercise.slug} name={exercise.name} />
+
+      {exercise.setupNotes && (
+        <p className="mb-2 text-xs text-ink-400">
+          <span className="text-ink-300">Installation : </span>
+          {exercise.setupNotes}
+        </p>
       )}
 
       {exercise.executionCues.length > 0 && (
